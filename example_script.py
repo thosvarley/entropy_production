@@ -51,21 +51,41 @@ Both of these functions return the same struture: a 1-dimensional numpy array
 where the value of the ith element is the state that the ith TR is assigned to. 
 """
 
-#For speed purposes I'm assuming you choose k-means and and a k of 6 
-cluster = cluster_kmeans(concat, 6)
-    
-#From that cluster array, you make the transition probability matrix
-transmat = make_transmat(cluster)
-#Note that the transmat has been normalized so that all out-going edges define
-#a probability distribution.
-print(transmat.sum(axis=1))
-plt.imshow(transmat)
-plt.colorbar(label="P(future | present)")
-plt.xlabel("Future State")
-plt.ylabel("Present State")
-#And from there you calculate the entropy production
-ent = entropy_production(transmat)
+k_range = [x for x in range(4,9)]
+l_range = [x for x in range(1,7)]
+k_list = [[] for x in range(len(l_range))]
 
-print(ent, "bit")
-    
+for l in range(len(l_range)): #The transmat function has a lag parameter - how far back in time is the "memory" of the system?
+    for k in range(4,9):
+        #For speed purposes I'm assuming you choose k-means and and a k of 6 
+        cluster = cluster_kmeans(concat, k)
+            
+        #From that cluster array, you make the transition probability matrix
+        transmat = make_transmat(cluster)
+        #Note that the transmat has been normalized so that all out-going edges define
+        #a probability distribution.
+        print(transmat.sum(axis=1))
+        plt.imshow(transmat)
+        plt.colorbar(label="P(future | present)")
+        plt.xlabel("Future State")
+        plt.ylabel("Present State")
+        plt.show()
+        #And from there you calculate the entropy production
+        k_list[l].append(entropy_production(transmat))
+        print(k)
 
+k_array = np.array(k_list)
+for i in range(len(l_range)):
+    plt.plot(k_range, k_list[i], label = l_range[i])
+plt.xlabel("K")
+plt.ylabel("Bit")
+plt.legend()
+plt.show()
+
+plt.imshow(k_array)
+plt.xticks([x for x in range(len(k_range))], k_range)
+plt.xlabel("K")
+plt.yticks([x for x in range(len(l_range))], l_range)
+plt.ylabel("Lag")
+plt.colorbar(label="Bits")
+plt.show()
