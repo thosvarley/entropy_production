@@ -16,9 +16,9 @@ from collections import Counter
 import matplotlib.pyplot as plt
 from scipy.io import loadmat
 
-#in_dir = '/home/thosvarley/Data/HCP/rest/'
-#mat = loadmat(in_dir + '100307.mat')
-#X = np.vstack(np.squeeze(mat["parcel_time"])).T
+in_dir = '/home/thosvarley/Data/HCP/rest/'
+mat = loadmat(in_dir + '100307.mat')
+X = np.vstack(np.squeeze(mat["parcel_time"])).T
 
 def cluster_kmeans(X, k):
     cluster = k_means(X.T, k)
@@ -52,13 +52,13 @@ def cluster_nerve(X, method = "infomap"):
     
     return np.array(comm.membership)
 
-def make_transmat(cluster):
+def make_transmat(cluster, lag=1):
     
     C = Counter(cluster)
     num_states = len(C)
     mat = np.zeros((num_states, num_states))
     
-    transitions = list(zip(cluster[:-1], cluster[1:]))
+    transitions = list(zip(cluster[:-lag], cluster[lag:]))
     for i in range(len(transitions)):
         mat[transitions[i][0], transitions[i][1]] += 1
     
@@ -81,7 +81,7 @@ def entropy_production(transmat):
                 entropy += transmat[i][j] * np.log2(transmat[i][j] / transmat[j][i])
     
     return entropy 
-
+'''
 def local_flux(x, y, probmat, transitions):
     """
     A utility function for use in flux(). 
@@ -150,3 +150,4 @@ def flux(X, nbins = 50):
             fluxes.append(local_flux(i, j, probmat, transitions))
     
     return fluxes
+'''
