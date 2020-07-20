@@ -9,7 +9,7 @@ import numpy as np
 from sklearn.cluster import k_means
 from sklearn.decomposition import PCA
 from scipy.spatial.distance import squareform, pdist
-from scipy.stats import zscore
+from scipy.stats import zscore, entropy
 import igraph as ig
 from copy import deepcopy
 from collections import Counter
@@ -81,6 +81,33 @@ def entropy_production(transmat):
                 entropy += transmat[i][j] * np.log2(transmat[i][j] / transmat[j][i])
     
     return entropy 
+
+
+def mutual_information(X, Y):
+    
+    mx = np.max((X,Y))
+    joint_space = np.histogram2d(X, Y, bins = mx+1)[0] / X.shape[0]
+    joint_ent = entropy(joint_space.flatten(), base=2)
+    
+    X_counts = Counter(X).values()
+    Y_counts = Counter(Y).values()
+    
+    X_ent = entropy(list(X_counts), base=2)
+    Y_ent = entropy(list(Y_counts), base=2)
+    
+    return X_ent + Y_ent - joint_ent
+
+
+def auto_mutual_information(cluster, max_lag):
+        
+    auto_mi = np.zeros(max_lag)
+    cluster_counts = list(Counter(cluster).values())
+    auto_mi[0] = entropy(cluster_counts, base=2)
+    
+    for l in range(1,max_lag):
+        auto_mi[l] = mutual_information(cluster[:-(l)], cluster[(l):])
+        
+    return auto_mi
 '''
 def local_flux(x, y, probmat, transitions):
     """
