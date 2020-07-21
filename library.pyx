@@ -9,17 +9,17 @@ import numpy as np
 from sklearn.cluster import k_means
 from sklearn.decomposition import PCA
 from scipy.spatial.distance import squareform, pdist
-from scipy.stats import zscore, entropy
+from scipy.stats import zscore
 import igraph as ig
 from copy import deepcopy
 from collections import Counter
 import matplotlib.pyplot as plt
 from scipy.io import loadmat
-"""
-in_dir = '/home/thosvarley/Data/HCP/rest/'
-mat = loadmat(in_dir + '100307.mat')
-X = np.vstack(np.squeeze(mat["parcel_time"])).T
-"""
+
+#in_dir = '/home/thosvarley/Data/HCP/rest/'
+#mat = loadmat(in_dir + '100307.mat')
+#X = np.vstack(np.squeeze(mat["parcel_time"])).T
+
 def cluster_kmeans(X, k):
     cluster = k_means(X.T, k)
     return cluster[1]
@@ -52,13 +52,13 @@ def cluster_nerve(X, method = "infomap"):
     
     return np.array(comm.membership)
 
-def make_transmat(cluster, lag=1):
+def make_transmat(cluster):
     
     C = Counter(cluster)
     num_states = len(C)
     mat = np.zeros((num_states, num_states))
     
-    transitions = list(zip(cluster[:-lag], cluster[lag:]))
+    transitions = list(zip(cluster[:-1], cluster[1:]))
     for i in range(len(transitions)):
         mat[transitions[i][0], transitions[i][1]] += 1
     
@@ -82,50 +82,6 @@ def entropy_production(transmat):
     
     return entropy 
 
-
-def mutual_information(X, Y):
-    
-    mx = np.max((X,Y))
-    joint_space = np.histogram2d(X, Y, bins = mx+1)[0] / X.shape[0]
-    joint_ent = entropy(joint_space.flatten(), base=2)
-    
-    X_counts = Counter(X).values()
-    Y_counts = Counter(Y).values()
-    
-    X_ent = entropy(list(X_counts), base=2)
-    Y_ent = entropy(list(Y_counts), base=2)
-    
-    return X_ent + Y_ent - joint_ent
-
-
-def auto_mutual_information(cluster, max_lag):
-        
-    auto_mi = np.zeros(max_lag)
-    cluster_counts = list(Counter(cluster).values())
-    auto_mi[0] = entropy(cluster_counts, base=2)
-    
-    for l in range(1,max_lag):
-        auto_mi[l] = mutual_information(cluster[:-(l)], cluster[(l):])
-        
-    return auto_mi
-
-def determinism(transmat):
-    
-    N = transmat.shape[0]
-    det = 0
-    for i in range(transmat.shape[0]):
-        det += (entropy(transmat[i], base=2))
-
-    return np.log2(N) - (det/N)
-
-def degeneracy(transmat):
-    
-    N = transmat.shape[0]
-    avg = np.mean(transmat, axis=0)
-    deg = entropy(avg, base=2)
-    
-    return np.log2(N) - deg
-'''
 def local_flux(x, y, probmat, transitions):
     """
     A utility function for use in flux(). 
@@ -194,4 +150,3 @@ def flux(X, nbins = 50):
             fluxes.append(local_flux(i, j, probmat, transitions))
     
     return fluxes
-'''
