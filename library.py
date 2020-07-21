@@ -82,6 +82,30 @@ def entropy_production(transmat):
     
     return entropy 
 
+def determinism(transmat, norm=False):
+    
+    N = transmat.shape[0]
+    det = 0
+    for i in range(transmat.shape[0]):
+        if np.sum(transmat[i]) != 0:
+            det += (entropy(transmat[i], base=2))
+    
+    if norm == False:
+        return np.log2(N) - (det/N)
+    elif norm == True:
+        return (np.log2(N) - (det/N)) / np.log2(N)
+
+def degeneracy(transmat, norm=False):
+    
+    N = transmat.shape[0]
+    avg = np.mean(transmat, axis=0)
+    deg = entropy(avg, base=2)
+    
+    if norm == False:
+        return np.log2(N) - deg 
+    elif norm == True:
+        return (np.log2(N) - deg) / np.log2(N)
+
 
 def mutual_information(X, Y):
     
@@ -108,23 +132,6 @@ def auto_mutual_information(cluster, max_lag):
         auto_mi[l] = mutual_information(cluster[:-(l)], cluster[(l):])
         
     return auto_mi
-
-def determinism(transmat):
-    
-    N = transmat.shape[0]
-    det = 0
-    for i in range(transmat.shape[0]):
-        det += (entropy(transmat[i], base=2))
-
-    return np.log2(N) - (det/N)
-
-def degeneracy(transmat):
-    
-    N = transmat.shape[0]
-    avg = np.mean(transmat, axis=0)
-    deg = entropy(avg, base=2)
-    
-    return np.log2(N) - deg
 '''
 def local_flux(x, y, probmat, transitions):
     """

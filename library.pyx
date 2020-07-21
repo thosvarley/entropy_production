@@ -5,25 +5,29 @@ Created on Fri Jun 26 14:38:40 2020
 
 @author: thosvarley
 """
+cimport cython 
 import numpy as np 
+cimport numpy as np
 from sklearn.cluster import k_means
 from sklearn.decomposition import PCA
 from scipy.spatial.distance import squareform, pdist
-from scipy.stats import zscore
+from scipy.stats import zscore, entropy
 import igraph as ig
 from copy import deepcopy
 from collections import Counter
 import matplotlib.pyplot as plt
 from scipy.io import loadmat
-
-#in_dir = '/home/thosvarley/Data/HCP/rest/'
-#mat = loadmat(in_dir + '100307.mat')
-#X = np.vstack(np.squeeze(mat["parcel_time"])).T
-
-def cluster_kmeans(X, k):
-    cluster = k_means(X.T, k)
-    return cluster[1]
-
+"""
+in_dir = '/home/thosvarley/Data/HCP/rest/'
+mat = loadmat(in_dir + '100307.mat')
+X = np.vstack(np.squeeze(mat["parcel_time"])).T
+"""
+@cython.boundscheck(False)
+@cython.wraparound(False)
+def cluster_kmeans(double[:,:] X, int k):
+    cdef np.ndarray cluster = k_means(X.T, k)[1]
+    return cluster
+"""
 def cluster_nerve(X, method = "infomap"):
     dmat = squareform(pdist((X.T), metric="cosine"))
     mn = np.min(dmat)
@@ -51,16 +55,21 @@ def cluster_nerve(X, method = "infomap"):
         comm = G.community_label_propagation(weights = "weight")
     
     return np.array(comm.membership)
+"""
 
-def make_transmat(cluster):
+@cython.boundscheck(False)
+@cython.wraparound(False)
+def make_transmat(long cluster, int lag=1):
     
-    C = Counter(cluster)
-    num_states = len(C)
-    mat = np.zeros((num_states, num_states))
+    cdef int num_states = np.max(cluster)+1
+    cdef double[:,:] mat = np.zeros((num_states, num_states))
     
-    transitions = list(zip(cluster[:-1], cluster[1:]))
+    cdef list transitions = list(zip(cluster[:-lag], cluster[lag:]))
+    cdef int i
+    cdef double total
+    
     for i in range(len(transitions)):
-        mat[transitions[i][0], transitions[i][1]] += 1
+        mat[transitions[i][0], transitions[i][1]] += 1.0
     
     for i in range(num_states):
         total = np.sum(mat[i])
@@ -69,12 +78,15 @@ def make_transmat(cluster):
         
     return mat
 
-def entropy_production(transmat):
+@cython.boundscheck(False)
+@cython.wraparound(False)
+def entropy_production(double[:,:] transmat):
     """
     Given a transition probability matrix (rows corresponding to out-going transitions),
     calculates the entropy production in bits. 
     """
-    entropy = 0
+    cdef double entropy = 0
+    cdef int i, j
     for i in range(transmat.shape[0]):
         for j in range(transmat.shape[0]):
             if transmat[i][j] != 0 and transmat[j][i] != 0:
@@ -82,6 +94,57 @@ def entropy_production(transmat):
     
     return entropy 
 
+@cython.boundscheck(False)
+@cython.wraparound(False)
+def determinism(double[:,:] transmat):
+    
+    cdef double N = transmat.shape[0]
+    cdef double det = 0
+    cdef int i 
+    
+    for i in range(transmat.shape[0]):
+        det += (entropy(transmat[i], base=2))
+
+    return np.log2(N) - (det/N)
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+def degeneracy(double[:,:] transmat):
+    
+    cdef double N = transmat.shape[0]
+    cdef double[:] avg = np.mean(transmat, axis=0)
+    cdef double deg = entropy(avg, base=2)
+    
+    return np.log2(N) - deg
+
+def mutual_information(X, Y):
+    
+    mx = np.max((X,Y))
+    joint_space = np.histogram2d(X, Y, bins = mx+1)[0] / X.shape[0]
+    joint_ent = entropy(joint_space.flatten(), base=2)
+    
+    X_counts = Counter(X).values()
+    Y_counts = Counter(Y).values()
+    
+    X_ent = entropy(list(X_counts), base=2)
+    Y_ent = entropy(list(Y_counts), base=2)
+    
+    return X_ent + Y_ent - joint_ent
+
+
+def auto_mutual_information(cluster, max_lag):
+        
+    auto_mi = np.zeros(max_lag)
+    cluster_counts = list(Counter(cluster).values())
+    auto_mi[0] = entropy(cluster_counts, base=2)
+    
+    for l in range(1,max_lag):
+        auto_mi[l] = mutual_information(cluster[:-(l)], cluster[(l):])
+        
+    return auto_mi
+
+
+'''
 def local_flux(x, y, probmat, transitions):
     """
     A utility function for use in flux(). 
@@ -150,3 +213,4 @@ def flux(X, nbins = 50):
             fluxes.append(local_flux(i, j, probmat, transitions))
     
     return fluxes
+'''
